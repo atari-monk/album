@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Desktop Photo Viewer</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+<div class="gallery" id="gallery"></div>
+
+<div class="viewer" id="viewer">
+    <img id="viewerImg">
+</div>
+
+<button id="settingsToggle">⚙</button>
+
+<div class="settings" id="settings">
+    <label>
+        Delay (seconds):
+        <input type="range" id="delayRange" min="1" max="10">
+        <span id="delayValue"></span>
+    </label>
+    <label>
+        <input type="checkbox" id="counterToggle">
+        Show photo counter
+    </label>
+    <button id="playBtn">▶ Slideshow</button>
+</div>
+
+<div class="counter" id="counter"></div>
+
+<script type="module" src="./main.js"></script>
+
+</body>
+</html>
