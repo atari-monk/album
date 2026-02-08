@@ -1,4 +1,4 @@
-# Story of Project - Parents Wedding Album 
+# Story of Project - Album 
 
 ## Table of Contents <a id="toc"></a>
 
@@ -234,6 +234,7 @@ function openViewer(index) {
     settingsToggle.style.display = "block";
 
     updateViewer();
+    initCursorAutoHide();
 
     if (firstOpen) {
         showSettings();
@@ -253,6 +254,8 @@ function closeViewer() {
 
     counter.style.display = "none";
     counter.textContent = "";
+
+    resetCursorAutoHide();
 }
 
 function updateViewer() {
@@ -360,6 +363,31 @@ document.addEventListener("click", e => {
 });
 
 hideSettings();
+
+/* ===== CURSOR AUTO-HIDE ===== */
+let cursorTimer = null;
+
+function initCursorAutoHide() {
+    viewer.style.cursor = "default";
+
+    function hideCursor() {
+        viewer.style.cursor = "none";
+    }
+
+    function resetTimer() {
+        viewer.style.cursor = "default";
+        if (cursorTimer) clearTimeout(cursorTimer);
+        cursorTimer = setTimeout(hideCursor, 3000);
+    }
+
+    viewer.addEventListener("mousemove", resetTimer);
+    resetTimer();
+}
+
+function resetCursorAutoHide() {
+    if (cursorTimer) clearTimeout(cursorTimer);
+    viewer.style.cursor = "default";
+}
 ```
 
 [⬆ Table of Contents](#toc)
