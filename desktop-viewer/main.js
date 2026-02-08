@@ -67,7 +67,7 @@ function openViewer(index) {
 
 function closeViewer() {
     viewer.style.display = "none";
-    stopAutoplay();
+    stopAutoplay(false);
     document.body.style.overflow = "auto";
 
     settingsToggle.style.display = "none";
@@ -104,23 +104,37 @@ function prevImage() {
 }
 
 /* ===== AUTOPLAY ===== */
-function startAutoplay() {
-    stopAutoplay();
+function startAutoplay(hideSettingsCard = false) {
+    stopAutoplay(false);
     autoplayTimer = setInterval(nextImage, SETTINGS.autoplayDelay);
     isPlaying = true;
     playBtn.textContent = "⏸ Stop slideshow";
+
+    if (hideSettingsCard && settingsVisible) {
+        hideSettings();
+        settingsVisible = false;
+    }
 }
 
-function stopAutoplay() {
+function stopAutoplay(hideSettingsCard = true) {
     if (autoplayTimer) clearInterval(autoplayTimer);
     autoplayTimer = null;
     isPlaying = false;
     playBtn.textContent = "▶ Slideshow";
+
+    if (hideSettingsCard && settingsVisible) {
+        hideSettings();
+        settingsVisible = false;
+    }
 }
 
 function togglePlay() {
     if (viewer.style.display !== "flex") return;
-    isPlaying ? stopAutoplay() : startAutoplay();
+    if (isPlaying) {
+        stopAutoplay(true);
+    } else {
+        startAutoplay(true);
+    }
 }
 
 /* ===== VIEWER INTERACTIONS ===== */
@@ -137,7 +151,7 @@ delayRange.addEventListener("input", () => {
     SETTINGS.autoplayDelay = delayRange.value * 1000;
     delayValue.textContent = delayRange.value + "s";
     saveSettings();
-    if (isPlaying) startAutoplay();
+    if (isPlaying) startAutoplay(false);
 });
 
 counterToggle.addEventListener("change", () => {
