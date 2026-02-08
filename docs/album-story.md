@@ -167,6 +167,7 @@ body {
     font-size: 16px;
     color: #fff;
     z-index: 1001;
+    display: none;
 }
 ```
 
@@ -195,6 +196,7 @@ let currentIndex = 0;
 let autoplayTimer = null;
 let isPlaying = false;
 let firstOpen = true;
+let settingsVisible = false;
 
 /* ===== ELEMENTS ===== */
 const gallery = document.getElementById("gallery");
@@ -230,6 +232,7 @@ function openViewer(index) {
     viewerImg.classList.remove("zoomed");
     document.body.style.overflow = "hidden";
     settingsToggle.style.display = "block";
+
     updateViewer();
 
     if (firstOpen) {
@@ -247,18 +250,29 @@ function closeViewer() {
     settingsToggle.style.display = "none";
     settingsVisible = false;
     hideSettings();
+
+    counter.style.display = "none";
+    counter.textContent = "";
 }
 
 function updateViewer() {
+    if (viewer.style.display !== "flex") return;
+
     viewerImg.src = images[currentIndex];
-    counter.style.display = SETTINGS.showCounter ? "block" : "none";
-    counter.textContent = `${currentIndex + 1} / ${images.length}`;
+
+    if (SETTINGS.showCounter) {
+        counter.style.display = "block";
+        counter.textContent = `${currentIndex + 1} / ${images.length}`;
+    } else {
+        counter.style.display = "none";
+    }
 }
 
 function nextImage() {
     currentIndex = (currentIndex + 1) % images.length;
     updateViewer();
 }
+
 function prevImage() {
     currentIndex = (currentIndex - 1 + images.length) % images.length;
     updateViewer();
@@ -271,12 +285,14 @@ function startAutoplay() {
     isPlaying = true;
     playBtn.textContent = "⏸ Stop slideshow";
 }
+
 function stopAutoplay() {
     if (autoplayTimer) clearInterval(autoplayTimer);
     autoplayTimer = null;
     isPlaying = false;
     playBtn.textContent = "▶ Slideshow";
 }
+
 function togglePlay() {
     if (viewer.style.display !== "flex") return;
     isPlaying ? stopAutoplay() : startAutoplay();
@@ -318,27 +334,31 @@ document.addEventListener("keydown", e => {
 
 /* ===== SETTINGS TOGGLE ===== */
 settingsBox.addEventListener("click", e => e.stopPropagation());
+
 function hideSettings() {
     settingsBox.style.opacity = "0";
     settingsBox.style.pointerEvents = "none";
 }
+
 function showSettings() {
     settingsBox.style.opacity = "1";
     settingsBox.style.pointerEvents = "auto";
 }
-let settingsVisible = false;
+
 settingsToggle.addEventListener("click", e => {
     if (viewer.style.display !== "flex") return;
     e.stopPropagation();
     settingsVisible = !settingsVisible;
     settingsVisible ? showSettings() : hideSettings();
 });
+
 document.addEventListener("click", e => {
     if (!settingsBox.contains(e.target) && e.target !== settingsToggle) {
         settingsVisible = false;
         hideSettings();
     }
 });
+
 hideSettings();
 ```
 
