@@ -1,16 +1,4 @@
-/* ===== CONFIG ===== */
-const PATH = "./../album/";
-const TOTAL_IMAGES = 174;
-
-/* ===== SETTINGS STORAGE ===== */
-let SETTINGS = JSON.parse(localStorage.getItem("viewerSettings")) || {
-    autoplayDelay: 5000,
-    showCounter: true
-};
-
-function saveSettings() {
-    localStorage.setItem("viewerSettings", JSON.stringify(SETTINGS));
-}
+import { PATH, TOTAL_IMAGES, SETTINGS, saveSettings } from './config.js';
 
 /* ===== STATE ===== */
 let images = [];
@@ -34,7 +22,7 @@ const counter = document.getElementById("counter");
 
 /* ===== BUILD GALLERY ===== */
 for (let i = 1; i <= TOTAL_IMAGES; i++) {
-    const src = `${PATH}${String(i).padStart(3,"0")}.jpg`;
+    const src = `${PATH}${String(i).padStart(3, "0")}.jpg`;
     const imgTest = new Image();
     imgTest.src = src;
     imgTest.onload = () => {

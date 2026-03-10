@@ -1,15 +1,38 @@
-# Story of Project - Album 
+# Album 
 
 ## Table of Contents <a id="toc"></a>
 
-- [Project Tree](#project-tree)
-- [Dev](#dev)
+- [Prompt](#prompt)
+- [Configuration](#configuration)
+    - [Files](#files)
+    - [Hosting](#hosting)
 - [Desktop Viewer](#desktop-viewer)
-    - [Index](#desktop-index)
-    - [Style](#desktop-style)
-    - [Main](#desktop-main)
+    - [Index](#dv-index)
+    - [Style](#dv-style)
+    - [Main](#dv-main)
 
-## Project Tree <a id="project-tree"></a>
+## Prompt <a id="prompt"></a>
+
+### Assumptions
+
+```text
+I develop incrementally using this document.  
+It contains latest code base and context.  
+Dont use comments inside code you give in answear.  
+Provide only one step at a time to update this document step by step when implementing new feature.  
+Do step so that app still works and is ready for test.  
+Step must contain all code needed to test it.  
+```
+
+### Task Log
+
+- Refactor main.js to use modules, procedural style, structs and functions for specific parts.
+
+[⬆ Table of Contents](#toc)
+
+## Configuration <a id="configuration"></a>
+
+### Files <a id="files"></a>
 
 ```txt
 album/
@@ -27,7 +50,7 @@ album/
 
 [⬆ Table of Contents](#toc)
 
-## Dev <a id="dev"></a>
+### Hosting <a id="hosting"></a>
 
 Single page can be launched just in browser.  
 Page with files for html, css and js must be hosted by server.
@@ -40,9 +63,7 @@ python3 -m http.server
 
 ## Desktop Viewer <a id="desktop-viewer"></a>
 
-[⬆ Table of Contents](#toc)
-
-### Index <a id="desktop-index"></a>
+### Index <a id="dv-index"></a>
 
 ```html
 <!DOCTYPE html>
@@ -85,7 +106,7 @@ python3 -m http.server
 
 [⬆ Table of Contents](#toc)
 
-### Style <a id="desktop-style"></a>
+### Style <a id="dv-style"></a>
 
 ```css
 body {
@@ -196,22 +217,34 @@ body {
 
 [⬆ Table of Contents](#toc)
 
-### Main <a id="desktop-main"></a>
+### Code <a id="code"></a>
+
+#### Config <a id="config"></a>
+
+desktop-viewer/config.js
 
 ```js
-/* ===== CONFIG ===== */
-const PATH = "./../album/";
-const TOTAL_IMAGES = 174;
+export const PATH = "./../album/";
+export const TOTAL_IMAGES = 174;
 
-/* ===== SETTINGS STORAGE ===== */
-let SETTINGS = JSON.parse(localStorage.getItem("viewerSettings")) || {
+export let SETTINGS = JSON.parse(localStorage.getItem("viewerSettings")) || {
     autoplayDelay: 5000,
     showCounter: true
 };
 
-function saveSettings() {
+export function saveSettings() {
     localStorage.setItem("viewerSettings", JSON.stringify(SETTINGS));
 }
+```
+
+[⬆ Table of Contents](#toc)
+
+#### Main <a id="dv-main"></a>
+
+desktop-viewer/main.js
+
+```js
+import { PATH, TOTAL_IMAGES, SETTINGS, saveSettings } from './config.js';
 
 /* ===== STATE ===== */
 let images = [];
