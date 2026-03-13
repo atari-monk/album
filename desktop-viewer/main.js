@@ -1,7 +1,7 @@
 import { PATH, TOTAL_IMAGES, SETTINGS, saveSettings } from './config.js';
-import { State, setCurrentIndex, nextIndex, prevIndex, setImages } from './state.js';
+import { State, setImages } from './state.js';
+import { openViewer, closeViewer, nextImage, prevImage, updateViewer } from './viewer.js';
 
-/* ===== ELEMENTS ===== */
 const gallery = document.getElementById("gallery");
 const viewer = document.getElementById("viewer");
 const viewerImg = document.getElementById("viewerImg");
@@ -13,7 +13,6 @@ const counterToggle = document.getElementById("counterToggle");
 const playBtn = document.getElementById("playBtn");
 const counter = document.getElementById("counter");
 
-/* ===== GALLERY ===== */
 function buildGallery() {
     const imgs = [];
     for (let i = 1; i <= TOTAL_IMAGES; i++) {
@@ -25,66 +24,16 @@ function buildGallery() {
             const img = document.createElement("img");
             img.src = src;
             img.loading = "lazy";
-            img.onclick = () => openViewer(imgs.indexOf(src));
+            img.onclick = () => openViewer(imgs.indexOf(src), viewer, viewerImg, settingsToggle, counter, showSettings, initCursorAutoHide);
             gallery.appendChild(img);
         };
     }
     setImages(imgs);
 }
 
-/* ===== VIEWER ===== */
-function updateViewer() {
-    if (viewer.style.display !== "flex") return;
-    viewerImg.src = State.images[State.currentIndex];
-    if (SETTINGS.showCounter) {
-        counter.style.display = "block";
-        counter.textContent = `${State.currentIndex + 1} / ${State.images.length}`;
-    } else {
-        counter.style.display = "none";
-    }
-}
-
-function openViewer(index) {
-    setCurrentIndex(index);
-    viewer.style.display = "flex";
-    viewerImg.classList.remove("zoomed");
-    document.body.style.overflow = "hidden";
-    settingsToggle.style.display = "block";
-    updateViewer();
-    initCursorAutoHide();
-    if (State.firstOpen) {
-        showSettings();
-        State.settingsVisible = true;
-        State.firstOpen = false;
-    }
-}
-
-function closeViewer() {
-    viewer.style.display = "none";
-    stopAutoplay(false);
-    document.body.style.overflow = "auto";
-    settingsToggle.style.display = "none";
-    State.settingsVisible = false;
-    hideSettings();
-    counter.style.display = "none";
-    counter.textContent = "";
-}
-
-/* ===== IMAGE NAVIGATION ===== */
-function nextImage() {
-    nextIndex();
-    updateViewer();
-}
-
-function prevImage() {
-    prevIndex();
-    updateViewer();
-}
-
-/* ===== AUTOPLAY ===== */
 function startAutoplay(hideSettingsCard = false) {
     stopAutoplay(false);
-    State.autoplayTimer = setInterval(nextImage, SETTINGS.autoplayDelay);
+    State.autoplayTimer = setInterval(() => nextImage(viewer, viewerImg, counter), SETTINGS.autoplayDelay);
     State.isPlaying = true;
     playBtn.textContent = "⏸ Stop slideshow";
     if (hideSettingsCard && State.settingsVisible) {
@@ -109,12 +58,10 @@ function togglePlay() {
     State.isPlaying ? stopAutoplay(true) : startAutoplay(true);
 }
 
-/* ===== VIEWER INTERACTIONS ===== */
 viewerImg.addEventListener("dblclick", () => viewerImg.classList.toggle("zoomed"));
 viewerImg.addEventListener("click", e => e.stopPropagation());
-viewer.addEventListener("click", closeViewer);
+viewer.addEventListener("click", () => closeViewer(viewer, settingsToggle, counter, hideSettings, stopAutoplay));
 
-/* ===== SETTINGS ===== */
 delayRange.value = SETTINGS.autoplayDelay / 1000;
 delayValue.textContent = delayRange.value + "s";
 counterToggle.checked = SETTINGS.showCounter;
@@ -129,7 +76,7 @@ delayRange.addEventListener("input", () => {
 counterToggle.addEventListener("change", () => {
     SETTINGS.showCounter = counterToggle.checked;
     saveSettings();
-    updateViewer();
+    updateViewer(viewer, viewerImg, counter);
 });
 
 playBtn.addEventListener("click", togglePlay);
@@ -145,6 +92,7 @@ function showSettings() {
 }
 
 settingsBox.addEventListener("click", e => e.stopPropagation());
+
 settingsToggle.addEventListener("click", e => {
     if (viewer.style.display !== "flex") return;
     e.stopPropagation();
@@ -161,16 +109,14 @@ document.addEventListener("click", e => {
 
 hideSettings();
 
-/* ===== KEYBOARD ===== */
 document.addEventListener("keydown", e => {
     if (viewer.style.display !== "flex") return;
-    if (e.key === "ArrowRight") nextImage();
-    if (e.key === "ArrowLeft") prevImage();
-    if (e.key === "Escape") closeViewer();
+    if (e.key === "ArrowRight") nextImage(viewer, viewerImg, counter);
+    if (e.key === "ArrowLeft") prevImage(viewer, viewerImg, counter);
+    if (e.key === "Escape") closeViewer(viewer, settingsToggle, counter, hideSettings, stopAutoplay);
     if (e.key === " ") { e.preventDefault(); togglePlay(); }
 });
 
-/* ===== CURSOR AUTO-HIDE ===== */
 let cursorTimer = null;
 
 function initCursorAutoHide() {
@@ -185,5 +131,4 @@ function initCursorAutoHide() {
     resetTimer();
 }
 
-/* ===== INIT ===== */
 buildGallery();
