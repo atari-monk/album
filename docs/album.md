@@ -13,6 +13,7 @@
         - [Config](#config)
         - [State](#state)
         - [Viewer](#viewer)
+        - [Slideshow](#slideshow)
         - [Main](#main)
 
 ## Prompt <a id="prompt"></a>
@@ -336,6 +337,57 @@ export function prevImage(viewer, viewerImg, counter) {
 
 [⬆ Table of Contents](#toc)
 
+#### Slideshow <a id="slideshow"></a>
+
+desktop-viewer/slideshow.js  
+
+```js
+import { State } from './state.js';
+import { SETTINGS } from './config.js';
+import { nextImage } from './viewer.js';
+
+export function startAutoplay(viewer, viewerImg, counter, playBtn, hideSettings, hideSettingsCard = false) {
+    stopAutoplay(playBtn, hideSettings, false);
+
+    State.autoplayTimer = setInterval(() => {
+        nextImage(viewer, viewerImg, counter);
+    }, SETTINGS.autoplayDelay);
+
+    State.isPlaying = true;
+    playBtn.textContent = "⏸ Stop slideshow";
+
+    if (hideSettingsCard && State.settingsVisible) {
+        hideSettings();
+        State.settingsVisible = false;
+    }
+}
+
+export function stopAutoplay(playBtn, hideSettings, hideSettingsCard = true) {
+    if (State.autoplayTimer) clearInterval(State.autoplayTimer);
+
+    State.autoplayTimer = null;
+    State.isPlaying = false;
+    playBtn.textContent = "▶ Slideshow";
+
+    if (hideSettingsCard && State.settingsVisible) {
+        hideSettings();
+        State.settingsVisible = false;
+    }
+}
+
+export function togglePlay(viewer, viewerImg, counter, playBtn, hideSettings) {
+    if (viewer.style.display !== "flex") return;
+
+    if (State.isPlaying) {
+        stopAutoplay(playBtn, hideSettings, true);
+    } else {
+        startAutoplay(viewer, viewerImg, counter, playBtn, hideSettings, true);
+    }
+}
+```
+
+[⬆ Table of Contents](#toc)
+
 #### Main <a id="main"></a>
 
 desktop-viewer/main.js
@@ -344,6 +396,7 @@ desktop-viewer/main.js
 import { PATH, TOTAL_IMAGES, SETTINGS, saveSettings } from './config.js';
 import { State, setImages } from './state.js';
 import { openViewer, closeViewer, nextImage, prevImage, updateViewer } from './viewer.js';
+import { startAutoplay, stopAutoplay, togglePlay } from './slideshow.js';
 
 const gallery = document.getElementById("gallery");
 const viewer = document.getElementById("viewer");
@@ -374,36 +427,18 @@ function buildGallery() {
     setImages(imgs);
 }
 
-function startAutoplay(hideSettingsCard = false) {
-    stopAutoplay(false);
-    State.autoplayTimer = setInterval(() => nextImage(viewer, viewerImg, counter), SETTINGS.autoplayDelay);
-    State.isPlaying = true;
-    playBtn.textContent = "⏸ Stop slideshow";
-    if (hideSettingsCard && State.settingsVisible) {
-        hideSettings();
-        State.settingsVisible = false;
-    }
-}
-
-function stopAutoplay(hideSettingsCard = true) {
-    if (State.autoplayTimer) clearInterval(State.autoplayTimer);
-    State.autoplayTimer = null;
-    State.isPlaying = false;
-    playBtn.textContent = "▶ Slideshow";
-    if (hideSettingsCard && State.settingsVisible) {
-        hideSettings();
-        State.settingsVisible = false;
-    }
-}
-
-function togglePlay() {
-    if (viewer.style.display !== "flex") return;
-    State.isPlaying ? stopAutoplay(true) : startAutoplay(true);
-}
-
 viewerImg.addEventListener("dblclick", () => viewerImg.classList.toggle("zoomed"));
 viewerImg.addEventListener("click", e => e.stopPropagation());
-viewer.addEventListener("click", () => closeViewer(viewer, settingsToggle, counter, hideSettings, stopAutoplay));
+
+viewer.addEventListener("click", () =>
+    closeViewer(
+        viewer,
+        settingsToggle,
+        counter,
+        hideSettings,
+        () => stopAutoplay(playBtn, hideSettings, false)
+    )
+);
 
 delayRange.value = SETTINGS.autoplayDelay / 1000;
 delayValue.textContent = delayRange.value + "s";
@@ -413,7 +448,8 @@ delayRange.addEventListener("input", () => {
     SETTINGS.autoplayDelay = delayRange.value * 1000;
     delayValue.textContent = delayRange.value + "s";
     saveSettings();
-    if (State.isPlaying) startAutoplay(false);
+    if (State.isPlaying)
+        startAutoplay(viewer, viewerImg, counter, playBtn, hideSettings, false);
 });
 
 counterToggle.addEventListener("change", () => {
@@ -422,7 +458,9 @@ counterToggle.addEventListener("change", () => {
     updateViewer(viewer, viewerImg, counter);
 });
 
-playBtn.addEventListener("click", togglePlay);
+playBtn.addEventListener("click", () =>
+    togglePlay(viewer, viewerImg, counter, playBtn, hideSettings)
+);
 
 function hideSettings() {
     settingsBox.style.opacity = "0";
@@ -456,8 +494,8 @@ document.addEventListener("keydown", e => {
     if (viewer.style.display !== "flex") return;
     if (e.key === "ArrowRight") nextImage(viewer, viewerImg, counter);
     if (e.key === "ArrowLeft") prevImage(viewer, viewerImg, counter);
-    if (e.key === "Escape") closeViewer(viewer, settingsToggle, counter, hideSettings, stopAutoplay);
-    if (e.key === " ") { e.preventDefault(); togglePlay(); }
+    if (e.key === "Escape") closeViewer(viewer, settingsToggle, counter, hideSettings, () => stopAutoplay(playBtn, hideSettings, false));
+    if (e.key === " ") { e.preventDefault(); togglePlay(viewer, viewerImg, counter, playBtn, hideSettings); }
 });
 
 let cursorTimer = null;
