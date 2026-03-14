@@ -16,6 +16,7 @@
         - [Viewer](#viewer)
         - [Slideshow](#slideshow)
         - [Main](#main)
+- [Desktop Viewer Page](#desktop-viewer-page)
 
 ## Prompt <a id="prompt"></a>
 
@@ -32,7 +33,12 @@ Step must contain all code needed to test it.
 
 ### Task Log
 
-- Refactor main.js to use modules, procedural style, structs and functions for specific parts.
+1. Refactor main.js to use modules, procedural style, structs and functions for specific parts.
+2. Build new chapter of this doc, 'Desktop Viewer Page'
+    - this must be single index.html becuse this can be opened in browser directly
+    - next i will zip fotos and index.html so i can distibute fotos to users
+    - i want you to use code base from Desktop Viewer section
+    - do not alter code base in any way, just put it in one file
 
 [⬆ Table of Contents](#toc)
 
@@ -566,5 +572,500 @@ buildGallery(
     initCursorAutoHide
 );
 ```
+
+[⬆ Table of Contents](#toc)
+
+## Desktop Viewer Page <a id="desktop-viewer-page"></a>
+
+### Index
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Desktop Photo Viewer</title>
+
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            font-family: Arial, sans-serif;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 10px;
+            padding: 10px;
+        }
+
+        .gallery img {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            object-fit: cover;
+            cursor: pointer;
+        }
+
+        .viewer {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .viewer img {
+            max-width: 100vw;
+            max-height: 100vh;
+            object-fit: contain;
+            transition: transform 0.3s ease;
+        }
+
+        .viewer img.zoomed {
+            transform: scale(2);
+            cursor: grab;
+        }
+
+        #settingsToggle {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1001;
+            font-size: 24px;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.5);
+            border: none;
+            border-radius: 8px;
+            padding: 6px 12px;
+            cursor: pointer;
+            display: none;
+        }
+
+        .settings {
+            position: fixed;
+            top: 60px;
+            right: 10px;
+            padding: 14px;
+            border-radius: 14px;
+            min-width: 220px;
+            font-size: 14px;
+            color: #fff;
+            z-index: 1002;
+            background: rgba(30, 30, 30, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .settings label {
+            display: block;
+            margin-bottom: 12px;
+        }
+
+        .settings input[type="range"] {
+            width: 100%;
+        }
+
+        .settings button {
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .counter {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            font-size: 16px;
+            color: #fff;
+            z-index: 1001;
+            display: none;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div class="gallery" id="gallery"></div>
+
+    <div class="viewer" id="viewer">
+        <img id="viewerImg">
+    </div>
+
+    <button id="settingsToggle">⚙</button>
+
+    <div class="settings" id="settings">
+        <label>
+            Delay (seconds):
+            <input type="range" id="delayRange" min="1" max="10">
+            <span id="delayValue"></span>
+        </label>
+        <label>
+            <input type="checkbox" id="counterToggle">
+            Show photo counter
+        </label>
+        <button id="playBtn">▶ Slideshow</button>
+    </div>
+
+    <div class="counter" id="counter"></div>
+
+    <script type="module">
+
+        const PATH = "./wonders/";
+        const TOTAL_IMAGES = 8;
+
+        let SETTINGS = JSON.parse(localStorage.getItem("viewerSettings")) || {
+            autoplayDelay: 2000,
+            showCounter: true
+        };
+
+        function saveSettings() {
+            localStorage.setItem("viewerSettings", JSON.stringify(SETTINGS));
+        }
+
+        const State = {
+            images: [],
+            currentIndex: 0,
+            autoplayTimer: null,
+            isPlaying: false,
+            firstOpen: true,
+            settingsVisible: false
+        };
+
+        function setCurrentIndex(index) {
+            State.currentIndex = index;
+        }
+
+        function nextIndex() {
+            State.currentIndex = (State.currentIndex + 1) % State.images.length;
+            return State.currentIndex;
+        }
+
+        function prevIndex() {
+            State.currentIndex = (State.currentIndex - 1 + State.images.length) % State.images.length;
+            return State.currentIndex;
+        }
+
+        function setImages(imgArray) {
+            State.images = imgArray;
+        }
+
+        function updateViewer(viewer, viewerImg, counter) {
+            if (viewer.style.display !== "flex") return;
+            viewerImg.src = State.images[State.currentIndex];
+            if (SETTINGS.showCounter) {
+                counter.style.display = "block";
+                counter.textContent = `${State.currentIndex + 1} / ${State.images.length}`;
+            } else {
+                counter.style.display = "none";
+            }
+        }
+
+        function nextImage(viewer, viewerImg, counter) {
+            nextIndex();
+            updateViewer(viewer, viewerImg, counter);
+        }
+
+        function prevImage(viewer, viewerImg, counter) {
+            prevIndex();
+            updateViewer(viewer, viewerImg, counter);
+        }
+
+        function startAutoplay(viewer, viewerImg, counter, playBtn, hideSettings, hideSettingsCard = false) {
+
+            stopAutoplay(playBtn, hideSettings, false);
+
+            State.autoplayTimer = setInterval(() => {
+                nextImage(viewer, viewerImg, counter);
+            }, SETTINGS.autoplayDelay);
+
+            State.isPlaying = true;
+            playBtn.textContent = "⏸ Stop slideshow";
+
+            if (hideSettingsCard && State.settingsVisible) {
+                hideSettings();
+                State.settingsVisible = false;
+            }
+
+        }
+
+        function stopAutoplay(playBtn, hideSettings, hideSettingsCard = true) {
+
+            if (State.autoplayTimer) clearInterval(State.autoplayTimer);
+
+            State.autoplayTimer = null;
+            State.isPlaying = false;
+            playBtn.textContent = "▶ Slideshow";
+
+            if (hideSettingsCard && State.settingsVisible) {
+                hideSettings();
+                State.settingsVisible = false;
+            }
+
+        }
+
+        function togglePlay(viewer, viewerImg, counter, playBtn, hideSettings) {
+
+            if (viewer.style.display !== "flex") return;
+
+            if (State.isPlaying) {
+                stopAutoplay(playBtn, hideSettings, true);
+            } else {
+                startAutoplay(viewer, viewerImg, counter, playBtn, hideSettings, true);
+            }
+
+        }
+
+        function openViewer(index, viewer, viewerImg, settingsToggle, counter, showSettings, initCursorAutoHide) {
+
+            setCurrentIndex(index);
+
+            viewer.style.display = "flex";
+
+            viewerImg.classList.remove("zoomed");
+
+            document.body.style.overflow = "hidden";
+
+            settingsToggle.style.display = "block";
+
+            updateViewer(viewer, viewerImg, counter);
+
+            initCursorAutoHide();
+
+            if (State.firstOpen) {
+                showSettings();
+                State.settingsVisible = true;
+                State.firstOpen = false;
+            }
+
+        }
+
+        function closeViewer(viewer, settingsToggle, counter, hideSettings, stopAuto) {
+
+            viewer.style.display = "none";
+
+            stopAuto(false);
+
+            document.body.style.overflow = "auto";
+
+            settingsToggle.style.display = "none";
+
+            State.settingsVisible = false;
+
+            hideSettings();
+
+            counter.style.display = "none";
+
+            counter.textContent = "";
+
+        }
+
+        function buildGallery(gallery, openViewer, viewer, viewerImg, settingsToggle, counter, showSettings, initCursorAutoHide) {
+
+            const imgs = [];
+
+            for (let i = 1; i <= TOTAL_IMAGES; i++) {
+
+                const src = `${PATH}${String(i).padStart(3, "0")}.jpg`;
+
+                const imgTest = new Image();
+                imgTest.src = src;
+
+                imgTest.onload = () => {
+
+                    imgs.push(src);
+
+                    const img = document.createElement("img");
+
+                    img.src = src;
+
+                    img.loading = "lazy";
+
+                    img.onclick = () => openViewer(imgs.indexOf(src), viewer, viewerImg, settingsToggle, counter, showSettings, initCursorAutoHide);
+
+                    gallery.appendChild(img);
+
+                };
+
+            }
+
+            setImages(imgs);
+
+        }
+
+        const gallery = document.getElementById("gallery");
+        const viewer = document.getElementById("viewer");
+        const viewerImg = document.getElementById("viewerImg");
+        const settingsToggle = document.getElementById("settingsToggle");
+        const settingsBox = document.getElementById("settings");
+        const delayRange = document.getElementById("delayRange");
+        const delayValue = document.getElementById("delayValue");
+        const counterToggle = document.getElementById("counterToggle");
+        const playBtn = document.getElementById("playBtn");
+        const counter = document.getElementById("counter");
+
+        viewerImg.addEventListener("dblclick", () => viewerImg.classList.toggle("zoomed"));
+
+        viewerImg.addEventListener("click", e => e.stopPropagation());
+
+        viewer.addEventListener("click", () => closeViewer(viewer, settingsToggle, counter, hideSettings, () => stopAutoplay(playBtn, hideSettings, false)));
+
+        delayRange.value = SETTINGS.autoplayDelay / 1000;
+        delayValue.textContent = delayRange.value + "s";
+
+        counterToggle.checked = SETTINGS.showCounter;
+
+        delayRange.addEventListener("input", () => {
+
+            SETTINGS.autoplayDelay = delayRange.value * 1000;
+
+            delayValue.textContent = delayRange.value + "s";
+
+            saveSettings();
+
+            if (State.isPlaying) startAutoplay(viewer, viewerImg, counter, playBtn, hideSettings, false);
+
+        });
+
+        counterToggle.addEventListener("change", () => {
+
+            SETTINGS.showCounter = counterToggle.checked;
+
+            saveSettings();
+
+            updateViewer(viewer, viewerImg, counter);
+
+        });
+
+        playBtn.addEventListener("click", () => togglePlay(viewer, viewerImg, counter, playBtn, hideSettings));
+
+        function hideSettings() {
+
+            settingsBox.style.opacity = "0";
+
+            settingsBox.style.pointerEvents = "none";
+
+        }
+
+        function showSettings() {
+
+            settingsBox.style.opacity = "1";
+
+            settingsBox.style.pointerEvents = "auto";
+
+        }
+
+        settingsBox.addEventListener("click", e => e.stopPropagation());
+
+        settingsToggle.addEventListener("click", e => {
+
+            if (viewer.style.display !== "flex") return;
+
+            e.stopPropagation();
+
+            State.settingsVisible = !State.settingsVisible;
+
+            State.settingsVisible ? showSettings() : hideSettings();
+
+        });
+
+        document.addEventListener("click", e => {
+
+            if (!settingsBox.contains(e.target) && e.target !== settingsToggle) {
+
+                State.settingsVisible = false;
+
+                hideSettings();
+
+            }
+
+        });
+
+        hideSettings();
+
+        document.addEventListener("keydown", e => {
+
+            if (viewer.style.display !== "flex") return;
+
+            if (e.key === "ArrowRight") nextImage(viewer, viewerImg, counter);
+
+            if (e.key === "ArrowLeft") prevImage(viewer, viewerImg, counter);
+
+            if (e.key === "Escape") closeViewer(viewer, settingsToggle, counter, hideSettings, () => stopAutoplay(playBtn, hideSettings, false));
+
+            if (e.key === " ") {
+                e.preventDefault();
+                togglePlay(viewer, viewerImg, counter, playBtn, hideSettings);
+            }
+
+        });
+
+        let cursorTimer = null;
+
+        function initCursorAutoHide() {
+
+            viewer.style.cursor = "default";
+
+            function hideCursor() {
+
+                viewer.style.cursor = "none";
+
+            }
+
+            function resetTimer() {
+
+                viewer.style.cursor = "default";
+
+                if (cursorTimer) clearTimeout(cursorTimer);
+
+                cursorTimer = setTimeout(hideCursor, 3000);
+
+            }
+
+            viewer.addEventListener("mousemove", resetTimer);
+
+            resetTimer();
+
+        }
+
+        buildGallery(gallery, openViewer, viewer, viewerImg, settingsToggle, counter, showSettings, initCursorAutoHide);
+
+    </script>
+
+</body>
+
+</html>
+```
+
+---
+
+### Result
+
+You can now distribute:
+
+```
+album/
+├── album/
+│   ├── 001.jpg
+│   └── n.jpg
+└── index.html
+```
+
+User just opens:
+
+```
+index.html
+```
+
+and the viewer works.
+
+---
 
 [⬆ Table of Contents](#toc)
