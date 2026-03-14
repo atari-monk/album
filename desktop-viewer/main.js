@@ -1,5 +1,6 @@
-import { PATH, TOTAL_IMAGES, SETTINGS, saveSettings } from './config.js';
-import { State, setImages } from './state.js';
+import { SETTINGS, saveSettings } from './config.js';
+import { State } from './state.js';
+import { buildGallery } from './gallery.js';
 import { openViewer, closeViewer, nextImage, prevImage, updateViewer } from './viewer.js';
 import { startAutoplay, stopAutoplay, togglePlay } from './slideshow.js';
 
@@ -13,24 +14,6 @@ const delayValue = document.getElementById("delayValue");
 const counterToggle = document.getElementById("counterToggle");
 const playBtn = document.getElementById("playBtn");
 const counter = document.getElementById("counter");
-
-function buildGallery() {
-    const imgs = [];
-    for (let i = 1; i <= TOTAL_IMAGES; i++) {
-        const src = `${PATH}${String(i).padStart(3, "0")}.jpg`;
-        const imgTest = new Image();
-        imgTest.src = src;
-        imgTest.onload = () => {
-            imgs.push(src);
-            const img = document.createElement("img");
-            img.src = src;
-            img.loading = "lazy";
-            img.onclick = () => openViewer(imgs.indexOf(src), viewer, viewerImg, settingsToggle, counter, showSettings, initCursorAutoHide);
-            gallery.appendChild(img);
-        };
-    }
-    setImages(imgs);
-}
 
 viewerImg.addEventListener("dblclick", () => viewerImg.classList.toggle("zoomed"));
 viewerImg.addEventListener("click", e => e.stopPropagation());
@@ -107,14 +90,28 @@ let cursorTimer = null;
 
 function initCursorAutoHide() {
     viewer.style.cursor = "default";
-    function hideCursor() { viewer.style.cursor = "none"; }
+
+    function hideCursor() {
+        viewer.style.cursor = "none";
+    }
+
     function resetTimer() {
         viewer.style.cursor = "default";
         if (cursorTimer) clearTimeout(cursorTimer);
         cursorTimer = setTimeout(hideCursor, 3000);
     }
+
     viewer.addEventListener("mousemove", resetTimer);
     resetTimer();
 }
 
-buildGallery();
+buildGallery(
+    gallery,
+    openViewer,
+    viewer,
+    viewerImg,
+    settingsToggle,
+    counter,
+    showSettings,
+    initCursorAutoHide
+);
